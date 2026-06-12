@@ -825,3 +825,41 @@ def create_assignment(data: dict):
     db.close()
 
     return assignment_data
+
+
+@app.post("/update-assignment")
+def update_assignment(data: dict):
+    assignment_id = data.get("assignment_id")
+
+    db = SessionLocal()
+
+    assignment = (
+        db.query(Assignment)
+        .filter(Assignment.id == assignment_id)
+        .first()
+    )
+
+    if not assignment:
+        db.close()
+        return {"error": "Assignment not found"}
+
+    assignment.course = data.get("course", assignment.course)
+    assignment.title = data.get("title", assignment.title)
+    assignment.due_date = data.get("due_date", assignment.due_date)
+    assignment.description = data.get("description", assignment.description)
+
+    db.commit()
+    db.refresh(assignment)
+
+    updated_assignment = {
+        "id": assignment.id,
+        "course": assignment.course,
+        "title": assignment.title,
+        "due_date": assignment.due_date,
+        "description": assignment.description,
+        "status": assignment.status,
+    }
+
+    db.close()
+
+    return updated_assignment

@@ -41,6 +41,11 @@ export default function Home() {
   const [newTitle, setNewTitle] = useState("");
   const [newDueDate, setNewDueDate] = useState("");
   const [newDescription, setNewDescription] = useState("");
+  const [editingAssignmentId, setEditingAssignmentId] = useState<number | null>(null);
+  const [editCourse, setEditCourse] = useState("");
+  const [editTitle, setEditTitle] = useState("");
+  const [editDueDate, setEditDueDate] = useState("");
+  const [editDescription, setEditDescription] = useState("");
 
   const [documents, setDocuments] = useState<Document[]>([]);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -213,6 +218,43 @@ export default function Home() {
     setNewDueDate("");
     setNewDescription("");
 
+    loadAssignments();
+  }
+
+  function startEditingAssignment(assignment: Assignment) {
+    setEditingAssignmentId(assignment.id);
+    setEditCourse(assignment.course);
+    setEditTitle(assignment.title);
+    setEditDueDate(assignment.due_date);
+    setEditDescription(assignment.description);
+  }
+
+  function cancelEditingAssignment() {
+    setEditingAssignmentId(null);
+    setEditCourse("");
+    setEditTitle("");
+    setEditDueDate("");
+    setEditDescription("");
+  }
+
+  async function saveEditedAssignment() {
+    if (!editingAssignmentId) return;
+
+    await fetch("http://127.0.0.1:8000/update-assignment", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        assignment_id: editingAssignmentId,
+        course: editCourse,
+        title: editTitle,
+        due_date: editDueDate,
+        description: editDescription,
+      }),
+    });
+
+    cancelEditingAssignment();
     loadAssignments();
   }
 
@@ -696,14 +738,66 @@ export default function Home() {
                           Completed
                         </button>
                       </div>
-                      <button
-                        onClick={() =>
-                          deleteAssignment(assignment.id)
-                        }
-                        className="px-3 py-1 rounded bg-red-700 text-white"
-                      >
-                        Delete
-                      </button>
+                      <div className="mt-3 flex gap-2">
+                        <button
+                          onClick={() => startEditingAssignment(assignment)}
+                          className="px-3 py-1 rounded bg-blue-700 text-white"
+                        >
+                          Edit
+                        </button>
+
+                        <button
+                          onClick={() => deleteAssignment(assignment.id)}
+                          className="px-3 py-1 rounded bg-red-700 text-white"
+                        >
+                          Delete
+                        </button>
+                      </div>
+                      {editingAssignmentId === assignment.id && (
+                        <div className="mt-3 border p-3 rounded bg-blue-50">
+                          <input
+                            className="border p-2 w-full mb-2 rounded"
+                            value={editCourse}
+                            onChange={(e) => setEditCourse(e.target.value)}
+                            placeholder="Course"
+                          />
+
+                          <input
+                            className="border p-2 w-full mb-2 rounded"
+                            value={editTitle}
+                            onChange={(e) => setEditTitle(e.target.value)}
+                            placeholder="Title"
+                          />
+
+                          <input
+                            className="border p-2 w-full mb-2 rounded"
+                            value={editDueDate}
+                            onChange={(e) => setEditDueDate(e.target.value)}
+                            placeholder="Due date"
+                          />
+
+                          <textarea
+                            className="border p-2 w-full mb-2 rounded"
+                            value={editDescription}
+                            onChange={(e) => setEditDescription(e.target.value)}
+                            placeholder="Description"
+                          />
+
+                          <button
+                            onClick={saveEditedAssignment}
+                            className="bg-black text-white px-3 py-1 rounded mr-2"
+                          >
+                            Save
+                          </button>
+
+                          <button
+                            onClick={cancelEditingAssignment}
+                            className="bg-gray-300 px-3 py-1 rounded"
+                          >
+                            Cancel
+                          </button>
+                        </div>
+                      )}
 
                       <button
                         onClick={() => generateStudyPlan(assignment.id)}
