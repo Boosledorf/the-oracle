@@ -7,7 +7,7 @@ import json
 import math
 
 from database import engine, SessionLocal
-from models import Base, Message, Document, DocumentChunk, Assignment,StudyPlan
+from models import Base, Message, Document, DocumentChunk, Assignment, StudyPlan
 
 app = FastAPI()
 
@@ -41,10 +41,7 @@ def split_text(text, chunk_size=1000, overlap=200):
 def get_embedding(text):
     response = requests.post(
         "http://localhost:11434/api/embeddings",
-        json={
-            "model": "nomic-embed-text",
-            "prompt": text
-        }
+        json={"model": "nomic-embed-text", "prompt": text},
     )
 
     return response.json()["embedding"]
@@ -72,21 +69,14 @@ def chat(data: dict):
 
     response = requests.post(
         "http://localhost:11434/api/generate",
-        json={
-            "model": "llama3.2",
-            "prompt": user_message,
-            "stream": False
-        }
+        json={"model": "llama3.2", "prompt": user_message, "stream": False},
     )
 
     ai_text = response.json()["response"]
 
     db = SessionLocal()
 
-    new_message = Message(
-        user_message=user_message,
-        ai_response=ai_text
-    )
+    new_message = Message(user_message=user_message, ai_response=ai_text)
 
     db.add(new_message)
     db.commit()
@@ -96,10 +86,7 @@ def chat(data: dict):
 
     db.close()
 
-    return {
-        "response": ai_text,
-        "id": message_id
-    }
+    return {"response": ai_text, "id": message_id}
 
 
 @app.get("/history")
@@ -137,7 +124,7 @@ async def upload_pdf(file: UploadFile = File(...)):
         file_path=file_path,
         text_preview=extracted_text[:2000],
         total_characters=len(extracted_text),
-        full_text=extracted_text
+        full_text=extracted_text,
     )
 
     db.add(new_document)
@@ -152,7 +139,7 @@ async def upload_pdf(file: UploadFile = File(...)):
         new_chunk = DocumentChunk(
             document_id=new_document.id,
             chunk_text=chunk,
-            embedding=json.dumps(embedding)
+            embedding=json.dumps(embedding),
         )
 
         db.add(new_chunk)
@@ -167,12 +154,12 @@ async def upload_pdf(file: UploadFile = File(...)):
     db.close()
 
     return {
-    "id": document_id,
-    "filename": filename,
-    "text_preview": text_preview,
-    "total_characters": total_characters,
-    "message": "PDF uploaded. Now run analyzers from frontend."
-}
+        "id": document_id,
+        "filename": filename,
+        "text_preview": text_preview,
+        "total_characters": total_characters,
+        "message": "PDF uploaded. Now run analyzers from frontend.",
+    }
 
 
 @app.get("/documents")
@@ -190,11 +177,7 @@ def ask_document(data: dict):
 
     db = SessionLocal()
 
-    document = (
-        db.query(Document)
-        .filter(Document.id == document_id)
-        .first()
-    )
+    document = db.query(Document).filter(Document.id == document_id).first()
 
     if not document:
         db.close()
@@ -203,9 +186,7 @@ def ask_document(data: dict):
     question_embedding = get_embedding(question)
 
     chunks = (
-        db.query(DocumentChunk)
-        .filter(DocumentChunk.document_id == document_id)
-        .all()
+        db.query(DocumentChunk).filter(DocumentChunk.document_id == document_id).all()
     )
 
     scored_chunks = []
@@ -214,10 +195,7 @@ def ask_document(data: dict):
         chunk_embedding = json.loads(chunk.embedding)
         score = cosine_similarity(question_embedding, chunk_embedding)
 
-        scored_chunks.append({
-            "text": chunk.chunk_text,
-            "score": score
-        })
+        scored_chunks.append({"text": chunk.chunk_text, "score": score})
 
     scored_chunks.sort(key=lambda x: x["score"], reverse=True)
 
@@ -244,17 +222,11 @@ ANSWER:
 
     response = requests.post(
         "http://localhost:11434/api/generate",
-        json={
-            "model": "llama3.2",
-            "prompt": prompt,
-            "stream": False
-        }
+        json={"model": "llama3.2", "prompt": prompt, "stream": False},
     )
 
-    return {
-        "answer": response.json()["response"],
-        "used_chunks": len(top_chunks)
-    }
+    return {"answer": response.json()["response"], "used_chunks": len(top_chunks)}
+
 
 @app.post("/analyze-document")
 def analyze_document(data: dict):
@@ -262,33 +234,63 @@ def analyze_document(data: dict):
 
     db = SessionLocal()
 
-    document = (
-        db.query(Document)
-        .filter(Document.id == document_id)
-        .first()
-    )
+    document = db.query(Document).filter(Document.id == document_id).first()
 
     if not document:
         db.close()
         return {"error": "Document not found"}
 
     all_chunks = (
-        db.query(DocumentChunk)
-        .filter(DocumentChunk.document_id == document_id)
-        .all()
+        db.query(DocumentChunk).filter(DocumentChunk.document_id == document_id).all()
     )
 
     deadline_keywords = [
-        "due", "deadline", "quiz", "exam", "test", "essay",
-        "assignment", "project", "presentation", "reflection",
-        "discussion", "submit", "submission", "schedule",
-        "week", "lesson", "module", "grade", "marks", "percent",
-        "opens", "closes", "available", "availability",
-        "lesson 1", "lesson 2", "lesson 3", "lesson 4",
-        "lessons 1", "lessons 5", "lessons 9",
-        "quiz 1", "quiz 2", "quiz 3",
-        "january", "february", "march", "april", "may", "june",
-        "july", "august", "september", "october", "november", "december"
+        "due",
+        "deadline",
+        "quiz",
+        "exam",
+        "test",
+        "essay",
+        "assignment",
+        "project",
+        "presentation",
+        "reflection",
+        "discussion",
+        "submit",
+        "submission",
+        "schedule",
+        "week",
+        "lesson",
+        "module",
+        "grade",
+        "marks",
+        "percent",
+        "opens",
+        "closes",
+        "available",
+        "availability",
+        "lesson 1",
+        "lesson 2",
+        "lesson 3",
+        "lesson 4",
+        "lessons 1",
+        "lessons 5",
+        "lessons 9",
+        "quiz 1",
+        "quiz 2",
+        "quiz 3",
+        "january",
+        "february",
+        "march",
+        "april",
+        "may",
+        "june",
+        "july",
+        "august",
+        "september",
+        "october",
+        "november",
+        "december",
     ]
 
     keyword_chunks = []
@@ -300,7 +302,6 @@ def analyze_document(data: dict):
             keyword_chunks.append(chunk.chunk_text)
 
     selected_chunks = keyword_chunks[:15]
-
     context = "\n\n---\n\n".join(selected_chunks)
 
     if not context.strip():
@@ -308,7 +309,7 @@ def analyze_document(data: dict):
         return {
             "assignments": [],
             "used_chunks": 0,
-            "message": "No deadline-related chunks found."
+            "message": "No deadline-related chunks found.",
         }
 
     prompt = f"""
@@ -384,12 +385,7 @@ DOCUMENT CONTEXT:
 
     response = requests.post(
         "http://localhost:11434/api/generate",
-        json={
-            "model": "llama3.2",
-            "prompt": prompt,
-            "stream": False,
-            "format": "json"
-        }
+        json={"model": "llama3.2", "prompt": prompt, "stream": False, "format": "json"},
     )
 
     ai_text = response.json()["response"].strip()
@@ -399,45 +395,69 @@ DOCUMENT CONTEXT:
         extracted_items = parsed.get("assignments", [])
     except Exception:
         db.close()
-        return {
-            "error": "AI did not return valid JSON",
-            "raw_response": ai_text
-        }
+        return {"error": "AI did not return valid JSON", "raw_response": ai_text}
 
     saved_assignments = []
 
     for item in extracted_items:
+        course = item.get("course", "Unknown")
         title = item.get("title", "Unknown")
         due_date = item.get("due_date", "Unknown")
+        description = item.get("description", "")
+
+        existing_assignment = (
+            db.query(Assignment)
+            .filter(
+                Assignment.source_document_id == document.id,
+                Assignment.title == title,
+                Assignment.due_date == due_date,
+            )
+            .first()
+        )
+
+        if existing_assignment:
+            saved_assignments.append(
+                {
+                    "id": existing_assignment.id,
+                    "course": existing_assignment.course,
+                    "title": existing_assignment.title,
+                    "due_date": existing_assignment.due_date,
+                    "description": existing_assignment.description,
+                    "status": existing_assignment.status,
+                    "duplicate": True,
+                }
+            )
+            continue
 
         new_assignment = Assignment(
-            course=item.get("course", "Unknown"),
+            course=course,
             title=title,
             due_date=due_date,
-            description=item.get("description", ""),
+            description=description,
             source_document_id=document.id,
-            status="not started"
+            status="not started",
         )
 
         db.add(new_assignment)
         db.commit()
         db.refresh(new_assignment)
 
-        saved_assignments.append({
-            "id": new_assignment.id,
-            "course": new_assignment.course,
-            "title": new_assignment.title,
-            "due_date": new_assignment.due_date,
-            "description": new_assignment.description,
-            "status": new_assignment.status
-        })
+        saved_assignments.append(
+            {
+                "id": new_assignment.id,
+                "course": new_assignment.course,
+                "title": new_assignment.title,
+                "due_date": new_assignment.due_date,
+                "description": new_assignment.description,
+                "status": new_assignment.status,
+                "duplicate": False,
+            }
+        )
 
     db.close()
 
-    return {
-        "assignments": saved_assignments,
-        "used_chunks": len(selected_chunks)
-    }
+    return {"assignments": saved_assignments, "used_chunks": len(selected_chunks)}
+
 
 @app.post("/analyze-quizzes")
 def analyze_quizzes(data: dict):
@@ -445,11 +465,7 @@ def analyze_quizzes(data: dict):
 
     db = SessionLocal()
 
-    document = (
-        db.query(Document)
-        .filter(Document.id == document_id)
-        .first()
-    )
+    document = db.query(Document).filter(Document.id == document_id).first()
 
     if not document:
         db.close()
@@ -517,8 +533,8 @@ DOCUMENT CONTEXT:
             "model": "llama3.2",
             "prompt": prompt,
             "stream": False,
-            "format": "json"
-        }
+            "format": "json",
+        },
     )
 
     ai_text = response.json()["response"].strip()
@@ -530,40 +546,127 @@ DOCUMENT CONTEXT:
         db.close()
         return {
             "error": "AI did not return valid JSON",
-            "raw_response": ai_text
+            "raw_response": ai_text,
         }
+
+    # If analyze-document already found the real course name, use it for quizzes
+    # when the quiz extractor returns "Unknown".
+    existing_course_assignment = (
+        db.query(Assignment)
+        .filter(
+            Assignment.source_document_id == document.id,
+            Assignment.course != "Unknown",
+        )
+        .first()
+    )
+
+    document_course = (
+        existing_course_assignment.course
+        if existing_course_assignment
+        else "Unknown"
+    )
 
     saved_assignments = []
 
     for item in extracted_items:
+        course = item.get("course", "Unknown")
+
+        if course == "Unknown":
+            course = document_course
+
+        title = item.get("title", "Unknown")
+        due_date = item.get("due_date", "Unknown")
+        description = item.get("description", "")
+
+        existing_assignment = (
+            db.query(Assignment)
+            .filter(
+                Assignment.source_document_id == document.id,
+                Assignment.title == title,
+                Assignment.due_date == due_date,
+            )
+            .first()
+        )
+
+        if existing_assignment:
+            # If this already exists but has Unknown course, fix it now.
+            if existing_assignment.course == "Unknown" and course != "Unknown":
+                existing_assignment.course = course
+                db.commit()
+                db.refresh(existing_assignment)
+
+            saved_assignments.append(
+                {
+                    "id": existing_assignment.id,
+                    "course": existing_assignment.course,
+                    "title": existing_assignment.title,
+                    "due_date": existing_assignment.due_date,
+                    "description": existing_assignment.description,
+                    "status": existing_assignment.status,
+                    "duplicate": True,
+                }
+            )
+            continue
+
         new_assignment = Assignment(
-            course=item.get("course", "Unknown"),
-            title=item.get("title", "Unknown"),
-            due_date=item.get("due_date", "Unknown"),
-            description=item.get("description", ""),
+            course=course,
+            title=title,
+            due_date=due_date,
+            description=description,
             source_document_id=document.id,
-            status="not started"
+            status="not started",
         )
 
         db.add(new_assignment)
         db.commit()
         db.refresh(new_assignment)
 
-        saved_assignments.append({
-            "id": new_assignment.id,
-            "course": new_assignment.course,
-            "title": new_assignment.title,
-            "due_date": new_assignment.due_date,
-            "description": new_assignment.description,
-            "status": new_assignment.status
-        })
+        saved_assignments.append(
+            {
+                "id": new_assignment.id,
+                "course": new_assignment.course,
+                "title": new_assignment.title,
+                "due_date": new_assignment.due_date,
+                "description": new_assignment.description,
+                "status": new_assignment.status,
+                "duplicate": False,
+            }
+        )
+
+    # Final cleanup: if any assignments from this document still say Unknown
+    # but another assignment from the same document has the real course,
+    # update the Unknown ones to match.
+    real_course_assignment = (
+        db.query(Assignment)
+        .filter(
+            Assignment.source_document_id == document.id,
+            Assignment.course != "Unknown",
+        )
+        .first()
+    )
+
+    if real_course_assignment:
+        real_course = real_course_assignment.course
+
+        unknown_assignments = (
+            db.query(Assignment)
+            .filter(
+                Assignment.source_document_id == document.id,
+                Assignment.course == "Unknown",
+            )
+            .all()
+        )
+
+        for assignment in unknown_assignments:
+            assignment.course = real_course
+
+        db.commit()
 
     db.close()
 
     return {
         "assignments": saved_assignments,
         "used_chunks": len(quiz_chunks[:10]),
-        "debug_context": context
     }
 
 
@@ -574,6 +677,7 @@ def get_assignments():
     db.close()
     return assignments
 
+
 @app.post("/update-assignment-status")
 def update_assignment_status(data: dict):
     assignment_id = data.get("assignment_id")
@@ -581,11 +685,7 @@ def update_assignment_status(data: dict):
 
     db = SessionLocal()
 
-    assignment = (
-        db.query(Assignment)
-        .filter(Assignment.id == assignment_id)
-        .first()
-    )
+    assignment = db.query(Assignment).filter(Assignment.id == assignment_id).first()
 
     if not assignment:
         db.close()
@@ -598,22 +698,16 @@ def update_assignment_status(data: dict):
 
     db.close()
 
-    return {
-        "success": True,
-        "id": assignment.id,
-        "status": assignment.status
-    }
+    return {"success": True, "id": assignment.id, "status": assignment.status}
+
+
 @app.post("/generate-study-plan")
 def generate_study_plan(data: dict):
     assignment_id = data.get("assignment_id")
 
     db = SessionLocal()
 
-    assignment = (
-        db.query(Assignment)
-        .filter(Assignment.id == assignment_id)
-        .first()
-    )
+    assignment = db.query(Assignment).filter(Assignment.id == assignment_id).first()
 
     if not assignment:
         db.close()
@@ -638,19 +732,13 @@ Include what to do first, what to do next, and what to do before submitting.
 
     response = requests.post(
         "http://localhost:11434/api/generate",
-        json={
-            "model": "llama3.2",
-            "prompt": prompt,
-            "stream": False
-        }
+        json={"model": "llama3.2", "prompt": prompt, "stream": False},
     )
 
     plan_text = response.json()["response"]
 
     existing_plan = (
-        db.query(StudyPlan)
-        .filter(StudyPlan.assignment_id == assignment_id)
-        .first()
+        db.query(StudyPlan).filter(StudyPlan.assignment_id == assignment_id).first()
     )
 
     if existing_plan:
@@ -660,10 +748,7 @@ Include what to do first, what to do next, and what to do before submitting.
 
         plan_id = existing_plan.id
     else:
-        new_plan = StudyPlan(
-            assignment_id=assignment.id,
-            plan_text=plan_text
-        )
+        new_plan = StudyPlan(assignment_id=assignment.id, plan_text=plan_text)
 
         db.add(new_plan)
         db.commit()
@@ -673,11 +758,7 @@ Include what to do first, what to do next, and what to do before submitting.
 
     db.close()
 
-    return {
-        "id": plan_id,
-        "assignment_id": assignment_id,
-        "plan_text": plan_text
-    }
+    return {"id": plan_id, "assignment_id": assignment_id, "plan_text": plan_text}
 
 
 @app.get("/study-plans")
@@ -686,3 +767,61 @@ def get_study_plans():
     plans = db.query(StudyPlan).all()
     db.close()
     return plans
+
+@app.post("/delete-assignment")
+def delete_assignment(data: dict):
+    assignment_id = data.get("assignment_id")
+
+    db = SessionLocal()
+
+    assignment = (
+        db.query(Assignment)
+        .filter(Assignment.id == assignment_id)
+        .first()
+    )
+
+    if not assignment:
+        db.close()
+        return {"error": "Assignment not found"}
+
+    db.delete(assignment)
+    db.commit()
+
+    db.close()
+
+    return {"message": "Assignment deleted"}
+
+@app.post("/create-assignment")
+def create_assignment(data: dict):
+    course = data.get("course", "Unknown")
+    title = data.get("title", "Untitled Assignment")
+    due_date = data.get("due_date", "Unknown")
+    description = data.get("description", "")
+
+    db = SessionLocal()
+
+    new_assignment = Assignment(
+        course=course,
+        title=title,
+        due_date=due_date,
+        description=description,
+        source_document_id=None,
+        status="not started",
+    )
+
+    db.add(new_assignment)
+    db.commit()
+    db.refresh(new_assignment)
+
+    assignment_data = {
+        "id": new_assignment.id,
+        "course": new_assignment.course,
+        "title": new_assignment.title,
+        "due_date": new_assignment.due_date,
+        "description": new_assignment.description,
+        "status": new_assignment.status,
+    }
+
+    db.close()
+
+    return assignment_data

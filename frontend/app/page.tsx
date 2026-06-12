@@ -25,12 +25,22 @@ type Assignment = {
   status: string;
 };
 
+type StudyPlan = {
+  id: number;
+  assignment_id: number;
+  plan_text: string;
+};
+
 export default function Home() {
   const [activeTab, setActiveTab] = useState("chat");
   const [isUploadingPdf, setIsUploadingPdf] = useState(false);
   const [message, setMessage] = useState("");
   const [response, setResponse] = useState("");
   const [history, setHistory] = useState<Message[]>([]);
+  const [newCourse, setNewCourse] = useState("");
+  const [newTitle, setNewTitle] = useState("");
+  const [newDueDate, setNewDueDate] = useState("");
+  const [newDescription, setNewDescription] = useState("");
 
   const [documents, setDocuments] = useState<Document[]>([]);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -42,6 +52,7 @@ export default function Home() {
   const [documentAnswer, setDocumentAnswer] = useState("");
 
   const [assignments, setAssignments] = useState<Assignment[]>([]);
+  const [studyPlans, setStudyPlans] = useState<StudyPlan[]>([]);
 
 
   async function loadHistory() {
@@ -60,6 +71,12 @@ export default function Home() {
     const res = await fetch("http://127.0.0.1:8000/assignments");
     const data = await res.json();
     setAssignments(data);
+  }
+
+  async function loadStudyPlans() {
+    const res = await fetch("http://127.0.0.1:8000/study-plans");
+    const data = await res.json();
+    setStudyPlans(data);
   }
 
   async function sendMessage() {
@@ -149,6 +166,56 @@ export default function Home() {
     loadAssignments();
   }
 
+  async function deleteAssignment(assignmentId: number) {
+    const confirmed = window.confirm(
+      "Delete this assignment?"
+    );
+
+    if (!confirmed) return;
+
+    await fetch(
+      "http://127.0.0.1:8000/delete-assignment",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          assignment_id: assignmentId,
+        }),
+      }
+    );
+
+    loadAssignments();
+  }
+
+  async function createAssignment() {
+    if (!newTitle.trim()) {
+      alert("Assignment title is required.");
+      return;
+    }
+
+    await fetch("http://127.0.0.1:8000/create-assignment", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        course: newCourse || "Unknown",
+        title: newTitle,
+        due_date: newDueDate || "Unknown",
+        description: newDescription,
+      }),
+    });
+
+    setNewCourse("");
+    setNewTitle("");
+    setNewDueDate("");
+    setNewDescription("");
+
+    loadAssignments();
+  }
+
   async function analyzeDocument(documentId: number) {
     await fetch("http://127.0.0.1:8000/analyze-document", {
       method: "POST",
@@ -171,6 +238,20 @@ export default function Home() {
         document_id: documentId,
       }),
     });
+  }
+
+  async function generateStudyPlan(assignmentId: number) {
+    await fetch("http://127.0.0.1:8000/generate-study-plan", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        assignment_id: assignmentId,
+      }),
+    });
+
+    loadStudyPlans();
   }
 
   const assignmentsByCourse = assignments.reduce((groups, assignment) => {
@@ -205,6 +286,7 @@ export default function Home() {
     loadHistory();
     loadDocuments();
     loadAssignments();
+    loadStudyPlans();
   }, []);
   const courseDashboard = Object.entries(assignmentsByCourse).map(
     ([course, courseAssignments]) => {
@@ -435,6 +517,45 @@ export default function Home() {
             >
               Refresh Assignments
             </button>
+            <div className="border p-4 bg-white rounded mb-6">
+              <h3 className="text-xl font-bold mb-3">Add Assignment</h3>
+
+              <input
+                className="border p-2 w-full mb-2 rounded"
+                value={newCourse}
+                onChange={(e) => setNewCourse(e.target.value)}
+                placeholder="Course, e.g. Math 101"
+              />
+
+              <input
+                className="border p-2 w-full mb-2 rounded"
+                value={newTitle}
+                onChange={(e) => setNewTitle(e.target.value)}
+                placeholder="Assignment title"
+              />
+
+              <input
+                className="border p-2 w-full mb-2 rounded"
+                value={newDueDate}
+                onChange={(e) => setNewDueDate(e.target.value)}
+                placeholder="Due date, e.g. July 13"
+              />
+
+              <textarea
+                className="border p-2 w-full mb-2 rounded"
+                value={newDescription}
+                onChange={(e) => setNewDescription(e.target.value)}
+                placeholder="Description"
+              />
+
+              <button
+                onClick={createAssignment}
+                className="bg-black text-white px-4 py-2 rounded"
+              >
+                Add Assignment
+              </button>
+            </div>
+
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
               <div className="bg-white border rounded p-4">
                 <p className="text-sm text-gray-500">Courses</p>
@@ -546,9 +667,7 @@ export default function Home() {
 
                       <div className="mt-2 flex gap-2">
                         <button
-                          onClick={() =>
-                            updateAssignmentStatus(assignment.id, "not started")
-                          }
+                          onClick={() => updateAssignmentStatus(assignment.id, "not started")}
                           className={`px-3 py-1 rounded ${assignment.status === "not started"
                             ? "bg-red-500 text-white"
                             : "bg-gray-200"
@@ -558,9 +677,7 @@ export default function Home() {
                         </button>
 
                         <button
-                          onClick={() =>
-                            updateAssignmentStatus(assignment.id, "in progress")
-                          }
+                          onClick={() => updateAssignmentStatus(assignment.id, "in progress")}
                           className={`px-3 py-1 rounded ${assignment.status === "in progress"
                             ? "bg-yellow-500 text-white"
                             : "bg-gray-200"
@@ -570,9 +687,7 @@ export default function Home() {
                         </button>
 
                         <button
-                          onClick={() =>
-                            updateAssignmentStatus(assignment.id, "completed")
-                          }
+                          onClick={() => updateAssignmentStatus(assignment.id, "completed")}
                           className={`px-3 py-1 rounded ${assignment.status === "completed"
                             ? "bg-green-500 text-white"
                             : "bg-gray-200"
@@ -581,6 +696,33 @@ export default function Home() {
                           Completed
                         </button>
                       </div>
+                      <button
+                        onClick={() =>
+                          deleteAssignment(assignment.id)
+                        }
+                        className="px-3 py-1 rounded bg-red-700 text-white"
+                      >
+                        Delete
+                      </button>
+
+                      <button
+                        onClick={() => generateStudyPlan(assignment.id)}
+                        className="bg-purple-700 text-white px-3 py-1 rounded mt-3"
+                      >
+                        Generate Study Plan
+                      </button>
+
+                      {studyPlans
+                        .filter((plan) => plan.assignment_id === assignment.id)
+                        .map((plan) => (
+                          <div key={plan.id} className="mt-3 border p-3 rounded bg-gray-50">
+                            <p className="font-bold mb-2">Study Plan</p>
+
+                            <pre className="whitespace-pre-wrap text-sm">
+                              {plan.plan_text}
+                            </pre>
+                          </div>
+                        ))}
 
                       <p className="mt-2">{assignment.description}</p>
                     </div>
