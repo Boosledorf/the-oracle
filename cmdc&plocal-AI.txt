@@ -1,0 +1,11 @@
+cd C:\Users\marty\Desktop\local-ai-workspace\backend
+Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
+.\venv\Scripts\Activate.ps1
+uvicorn main:app --reload
+
+
+cd C:\Users\marty\Desktop\local-ai-workspace\frontend
+npm run dev
+
+ollama run llama3.2
+ollama list
